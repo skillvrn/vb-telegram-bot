@@ -1,0 +1,107 @@
+name: Lint, Detect, Test Build
+
+on:
+  push:
+    branches:
+      - '*'
+
+jobs:
+  lint:
+    name: Python lint TELEGRAM-BOT
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      PYTHON_VERSION: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 mypy aiohttp beautifulsoup4 requests
+          pip install types-beautifulsoup4 types-requests
+
+      - name: Run flake8 (style guide enforcement)
+        run: flake8 . --count --show-source --statistics
+
+      - name: Run mypy (static type checking)
+        run: mypy --install-types --non-interactive .
+
+  detect-secrets:
+    name: Scanning for secrets in code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gitleaks/gitleaks-action@v2
+        with:
+          severity-level: high
+
+  build_deploy:
+    name: Build, push and deploy
+    needs: detect-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get short SHA
+        id: get-short-sha
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Forming docker-compose file
+        env:
+          DOCKER_REPO: ${{ env.DOCKER_REPO }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ADMIN_CHAT_ID: ${{ env.ADMIN_CHAT_ID }}
+        run: |
+          sed -e "s/\${VERSION}/$SHORT_SHA/g" \
+              -e "s/\${DOCKER_REPO}/$DOCKER_REPO/g" \
+              -e "s/\${TELEGRAM_BOT_TOKEN}/$TELEGRAM_BOT_TOKEN/g" \
+              -e "s/\${ADMIN_CHAT_ID}/$ADMIN_CHAT_ID/g" \
+              docker-compose.template.yaml > docker-compose.yaml
+      
+      - name: Log in to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push image
+        working-directory: ./
+        run: |
+          docker build -t ${{ secrets.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA .
+          docker push ${{ secrets.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Copy docker-compose.yaml to server
+        run: |
+          scp -o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} ./docker-compose.yaml ${{ env.SSH_USERNAME }}@${{ env.SSH_HOST }}:/srv/vb-telegram-bot
+
+      - name: SSH to server and deploy
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ env.SSH_PORT }} ${{ env.SSH_USERNAME }}@${{ env.SSH_HOST }} << EOF
+            cd /srv/vb-telegram-bot
+            docker pull ${{ secrets.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
+            export TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
+            docker-compose down
+            docker-compose up -d
+            docker system prune -f
+            docker image prune -a -f
+          EOF
