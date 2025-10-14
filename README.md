@@ -1,2 +1,2 @@
-# vb-telegram-bot
-Telegram bot for volleyball team
+# Telegram-bot
+Создание Telegram-бота для управления списком игроков на любительские волейбольные игры!
