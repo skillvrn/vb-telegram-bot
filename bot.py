@@ -23,7 +23,7 @@ DATA_FILE = "/app/data/players.json"
 GAME_DAY = "воскресенье"
 REGISTRATION_OPEN = True
 # Список игроков, каждый — словарь с user_id, first_name, last_name
-players = []
+players: list[dict[str, str | int]] = []
 pending_confirmations = set()
 MAX_PLAYERS = 12
 
