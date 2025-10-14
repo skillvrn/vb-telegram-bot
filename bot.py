@@ -72,10 +72,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     text = update.message.text
 
-    if not user.first_name or not user.last_name:
+    # Теперь достаточно только имени
+    if not user.first_name:
         await update.message.reply_text(
-            "⚠️ У вас не указаны имя и фамилия в Telegram. "
-            "Пожалуйста, укажите их в настройках."
+            "⚠️ У вас не указано имя в Telegram. "
+            "Пожалуйста, укажите его в настройках."
         )
         return
 
