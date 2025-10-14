@@ -45,9 +45,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gitleaks/gitleaks-action@v2
         with:
-          severity-level: high
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
 
   build_deploy:
     name: Build, push and deploy
