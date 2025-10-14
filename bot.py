@@ -3,41 +3,49 @@ import json
 import datetime
 import asyncio
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+)
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not BOT_TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN not found in environment variables. Please set it.")
+    raise ValueError(
+        "TELEGRAM_BOT_TOKEN not found in environment variables. Please set it."
+    )
 
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 if not ADMIN_CHAT_ID:
-    raise ValueError("ADMIN_CHAT_ID not found in environment variables. Please set it.")
+    raise ValueError(
+        "ADMIN_CHAT_ID not found in environment variables. Please set it."
+    )
 
-# Файл с игроками
 DATA_FILE = "/app/data/players.json"
-# День игры
 GAME_DAY = "воскресенье"
 REGISTRATION_OPEN = True
 players = []  # Список игроков, каждый — словарь с user_id, first_name, last_name
 pending_confirmations = set()
 MAX_PLAYERS = 12
 
+
 # ---------------- 📁 Работа с файлом ----------------
+
 def load_players():
-    global players
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            players[:] = data  # Сохраняем список словарей
+            players[:] = data
             print("✅ Игроки загружены из файла.")
     except FileNotFoundError:
         players.clear()
+
 
 def save_players():
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(players, f, ensure_ascii=False)
 
+
 # ---------------- 🤖 Команды бота ----------------
+
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton("📥 Записаться"), KeyboardButton("📤 Отписаться")],
@@ -46,22 +54,28 @@ main_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+
 def is_registered(user_id):
     return any(p['user_id'] == user_id for p in players)
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        f"Привет, {update.effective_user.first_name}! Добро пожаловать в волейбольный бот 🏐",
+        f"Привет, {update.effective_user.first_name}! "
+        "Добро пожаловать в волейбольный бот 🏐",
         reply_markup=main_keyboard
     )
 
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global REGISTRATION_OPEN
     user = update.effective_user
     text = update.message.text
 
     if not user.first_name or not user.last_name:
-        await update.message.reply_text("⚠️ У вас не указаны имя и фамилия в Telegram. Пожалуйста, укажите их в настройках.")
+        await update.message.reply_text(
+            "⚠️ У вас не указаны имя и фамилия в Telegram. "
+            "Пожалуйста, укажите их в настройках."
+        )
         return
 
     if text == "📥 Записаться":
@@ -71,7 +85,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_registered(user.id):
             await update.message.reply_text("Вы уже записаны ✅")
         elif len(players) >= MAX_PLAYERS:
-            await update.message.reply_text("⛔️ Все места заняты! Максимум 12 человек.")
+            await update.message.reply_text(
+                "⛔️ Все места заняты! Максимум 12 человек."
+            )
         else:
             pending_confirmations.add(user.id)
             keyboard = ReplyKeyboardMarkup(
@@ -85,7 +101,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif text == "📤 Отписаться":
         if is_registered(user.id):
-            # Удаляем игрока по user_id
             players[:] = [p for p in players if p['user_id'] != user.id]
             save_players()
             await update.message.reply_text("Вы отписались от волейбола.")
@@ -93,13 +108,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 try:
                     await context.bot.send_message(
                         chat_id=chat['user_id'],
-                        text=f"⚠️ {user.first_name} {user.last_name or ''} освободил место на волейбол."
+                        text=(
+                            f"⚠️ {user.first_name} "
+                            f"{user.last_name or ''} освободил место на волейбол."
+                        )
                     )
                 except Exception:
                     pass
             await context.bot.send_message(
                 chat_id=ADMIN_CHAT_ID,
-                text=f"📤 {user.first_name} {user.last_name or ''} отписался от волейбола."
+                text=(
+                    f"📤 {user.first_name} "
+                    f"{user.last_name or ''} отписался от волейбола."
+                )
             )
         else:
             await update.message.reply_text("Вы не были записаны.")
@@ -107,18 +128,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "📋 Список игроков":
         if players:
             player_list = "\n".join(
-                [f"{i+1}. {p['first_name']} {p['last_name']}".strip() for i, p in enumerate(players)]
+                [
+                    f"{i+1}. {p['first_name']} {p['last_name']}".strip()
+                    for i, p in enumerate(players)
+                ]
             )
-            await update.message.reply_text(f"📋 Список игроков:\n{player_list}")
+            await update.message.reply_text(
+                f"📋 Список игроков:\n{player_list}"
+            )
         else:
             await update.message.reply_text("Список пуст.")
 
     elif text == "✅ Да":
         if user.id in pending_confirmations:
             if len(players) >= MAX_PLAYERS:
-                await update.message.reply_text("⛔️ Все места заняты! Максимум 12 человек.", reply_markup=main_keyboard)
+                await update.message.reply_text(
+                    "⛔️ Все места заняты! Максимум 12 человек.",
+                    reply_markup=main_keyboard
+                )
             elif is_registered(user.id):
-                await update.message.reply_text("Вы уже записаны ✅", reply_markup=main_keyboard)
+                await update.message.reply_text(
+                    "Вы уже записаны ✅",
+                    reply_markup=main_keyboard
+                )
             else:
                 players.append({
                     'user_id': user.id,
@@ -133,22 +165,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 await context.bot.send_message(
                     chat_id=ADMIN_CHAT_ID,
-                    text=f"📥 {user.first_name} {user.last_name or ''} записался на волейбол."
+                    text=(
+                        f"📥 {user.first_name} "
+                        f"{user.last_name or ''} записался на волейбол."
+                    )
                 )
         else:
-            await update.message.reply_text("Сначала выберите '📥 Записаться' с клавиатуры.", reply_markup=main_keyboard)
+            await update.message.reply_text(
+                "Сначала выберите '📥 Записаться' с клавиатуры.",
+                reply_markup=main_keyboard
+            )
 
     elif text == "❌ Нет":
         if user.id in pending_confirmations:
             pending_confirmations.remove(user.id)
-            await update.message.reply_text("Запись отменена.", reply_markup=main_keyboard)
+            await update.message.reply_text(
+                "Запись отменена.",
+                reply_markup=main_keyboard
+            )
         else:
-            await update.message.reply_text("Нечего отменять.", reply_markup=main_keyboard)
+            await update.message.reply_text(
+                "Нечего отменять.",
+                reply_markup=main_keyboard
+            )
 
     else:
-        await update.message.reply_text("Пожалуйста, выберите действие с клавиатуры.")
+        await update.message.reply_text(
+            "Пожалуйста, выберите действие с клавиатуры."
+        )
+
 
 # ---------------- ⏰ Планировщик ----------------
+
 async def reminder_job(app):
     global REGISTRATION_OPEN
 
@@ -185,17 +233,22 @@ async def reminder_job(app):
 
         await asyncio.sleep(30)
 
+
 # ---------------- 🔧 Запуск ----------------
+
 async def main():
     load_players()
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
+    )
     app.create_task(reminder_job(app))
 
     print("🤖 Бот запущен!")
     await app.run_polling()
+
 
 if __name__ == "__main__":
     import nest_asyncio
