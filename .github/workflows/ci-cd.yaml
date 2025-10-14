@@ -82,8 +82,8 @@ jobs:
       - name: Build and push image
         working-directory: ./
         run: |
-          docker build -t ${{ secrets.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA .
-          docker push ${{ secrets.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
+          docker build -t ${{ env.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA .
+          docker push ${{ env.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
 
       - name: Set up SSH key
         uses: webfactory/ssh-agent@v0.5.3
@@ -98,7 +98,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ env.SSH_PORT }} ${{ env.SSH_USERNAME }}@${{ env.SSH_HOST }} << EOF
             cd /srv/vb-telegram-bot
-            docker pull ${{ secrets.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
+            docker pull ${{ env.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
             export TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
             docker-compose down
             docker-compose up -d
