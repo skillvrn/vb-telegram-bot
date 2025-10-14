@@ -63,9 +63,9 @@ jobs:
 
       - name: Forming docker-compose file
         env:
-          DOCKER_REPO: ${{ env.DOCKER_REPO }}
+          DOCKER_REPO: ${{ vars.DOCKER_REPO }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          ADMIN_CHAT_ID: ${{ env.ADMIN_CHAT_ID }}
+          ADMIN_CHAT_ID: ${{ vars.ADMIN_CHAT_ID }}
         run: |
           sed -e "s/\${VERSION}/$SHORT_SHA/g" \
               -e "s/\${DOCKER_REPO}/$DOCKER_REPO/g" \
@@ -82,8 +82,8 @@ jobs:
       - name: Build and push image
         working-directory: ./
         run: |
-          docker build -t ${{ env.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA .
-          docker push ${{ env.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
+          docker build -t ${{ vars.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA .
+          docker push ${{ vars.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
 
       - name: Set up SSH key
         uses: webfactory/ssh-agent@v0.5.3
@@ -92,13 +92,13 @@ jobs:
       
       - name: Copy docker-compose.yaml to server
         run: |
-          scp -o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} ./docker-compose.yaml ${{ env.SSH_USERNAME }}@${{ env.SSH_HOST }}:/srv/vb-telegram-bot
+          scp -o StrictHostKeyChecking=no -P ${{ vars.SSH_PORT }} ./docker-compose.yaml ${{ vars.SSH_USERNAME }}@${{ vars.SSH_HOST }}:/srv/vb-telegram-bot
 
       - name: SSH to server and deploy
         run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ env.SSH_PORT }} ${{ env.SSH_USERNAME }}@${{ env.SSH_HOST }} << EOF
+          ssh -o StrictHostKeyChecking=no -p ${{ vars.SSH_PORT }} ${{ vars.SSH_USERNAME }}@${{ vars.SSH_HOST }} << EOF
             cd /srv/vb-telegram-bot
-            docker pull ${{ env.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
+            docker pull ${{ vars.DOCKER_REPO }}/vb-telegram-bot:$SHORT_SHA
             export TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
             docker-compose down
             docker-compose up -d
