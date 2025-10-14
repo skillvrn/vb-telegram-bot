@@ -2,19 +2,19 @@ version: '3.8'
 
 services:
   telegram_volleyball_bot:
-    image: ${DOCKER_REPO}/telegram-volleyball-bot:${VERSION}
+    image: ${DOCKER_REPO}/vb-telegram-bot:${VERSION}
     pull_policy: if_not_present
-    restart: unless-stopped
+    restart: always
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       ADMIN_CHAT_ID: ${ADMIN_CHAT_ID}
     volumes:
       - ./data:/app/data
     networks:
-      - telegram_volleyball_bot_network
+      - vb_telegram_bot_network
 
 volumes:
   data:
 
 networks:
-  telegram_volleyball_bot_network:
+  vb_telegram_bot_network:
