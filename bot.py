@@ -22,7 +22,8 @@ if not ADMIN_CHAT_ID:
 DATA_FILE = "/app/data/players.json"
 GAME_DAY = "воскресенье"
 REGISTRATION_OPEN = True
-players = []  # Список игроков, каждый — словарь с user_id, first_name, last_name
+# Список игроков, каждый — словарь с user_id, first_name, last_name
+players = []
 pending_confirmations = set()
 MAX_PLAYERS = 12
 
@@ -110,7 +111,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         chat_id=chat['user_id'],
                         text=(
                             f"⚠️ {user.first_name} "
-                            f"{user.last_name or ''} освободил место на волейбол."
+                            f"{user.last_name or ''} освободил место на "
+                            "волейбол."
                         )
                     )
                 except Exception:
