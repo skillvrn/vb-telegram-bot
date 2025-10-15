@@ -22,7 +22,7 @@ if not ADMIN_CHAT_ID:
 DATA_FILE = "/app/data/players.json"
 GAME_DAY = "воскресенье"
 REGISTRATION_OPEN = True
-# Список игроков, каждый — словарь с user_id, first_name, last_name
+# Список игроков, каждый — словарь с user_id, first_name, last_name, username
 players: list[dict[str, str | int]] = []
 pending_confirmations = set()
 MAX_PLAYERS = 12
@@ -132,7 +132,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if players:
             player_list = "\n".join(
                 [
-                    f"{i+1}. {p['first_name']} {p['last_name']}".strip()
+                    f"{i+1}. {p['first_name']} {p['last_name']} "
+                    f"(@{p.get('username', '')})".strip()
                     for i, p in enumerate(players)
                 ]
             )
@@ -158,7 +159,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 players.append({
                     'user_id': user.id,
                     'first_name': user.first_name,
-                    'last_name': user.last_name or ""
+                    'last_name': user.last_name or "",
+                    'username': user.username or ""
                 })
                 save_players()
                 pending_confirmations.remove(user.id)
