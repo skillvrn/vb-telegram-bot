@@ -71,6 +71,9 @@ jobs:
               -e "s/\${DOCKER_REPO}/$DOCKER_REPO/g" \
               -e "s/\${TELEGRAM_BOT_TOKEN}/$TELEGRAM_BOT_TOKEN/g" \
               -e "s/\${ADMIN_CHAT_ID}/$ADMIN_CHAT_ID/g" \
+              -e "s/\${ORGANIZER_CHAT_ID}/$ORGANIZER_CHAT_ID/g" \
+              -e "s/\${PAYMENT_INFORMATION}/$PAYMENT_INFORMATION/g" \
+              -e "s/\${VOLLEYBALL_CHAT_ID}/$VOLLEYBALL_CHAT_ID/g" \
               docker-compose.template.yaml > docker-compose.yaml
       
       - name: Log in to DockerHub

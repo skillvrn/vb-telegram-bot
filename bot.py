@@ -7,14 +7,6 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 )
 
-# Отладочная печать всех переменных окружения
-print("🔍 Проверка переменных окружения:")
-print(f"TELEGRAM_BOT_TOKEN: {'✅' if os.getenv('TELEGRAM_BOT_TOKEN') else '❌'}")
-print(f"ADMIN_CHAT_ID: {'✅' if os.getenv('ADMIN_CHAT_ID') else '❌'}")
-print(f"VOLLEYBALL_CHAT_ID: {'✅' if os.getenv('VOLLEYBALL_CHAT_ID') else '❌'}")
-print(f"ORGANIZER_CHAT_ID: {'✅' if os.getenv('ORGANIZER_CHAT_ID') else '❌'}")
-print(f"PAYMENT_INFORMATION: {'✅' if os.getenv('PAYMENT_INFORMATION') else '❌'}")
-
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError(
@@ -23,22 +15,27 @@ if not BOT_TOKEN:
 
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 if not ADMIN_CHAT_ID:
-    print("⚠️ ADMIN_CHAT_ID not found. Some admin features will be disabled.")
+    raise ValueError(
+        "ADMIN_CHAT_ID not found in environment variables. Please set it."
+    )
 
 VOLLEYBALL_CHAT_ID = os.getenv("VOLLEYBALL_CHAT_ID")
 if not VOLLEYBALL_CHAT_ID:
-    print("⚠️ VOLLEYBALL_CHAT_ID not found. Chat notifications will be disabled.")
-else:
-    print(f"✅ VOLLEYBALL_CHAT_ID loaded: {VOLLEYBALL_CHAT_ID}")
+    raise ValueError(
+        "VOLLEYBALL_CHAT_ID not found in environment variables. Please set it."
+    )
 
 ORGANIZER_CHAT_ID = os.getenv("ORGANIZER_CHAT_ID")
 if not ORGANIZER_CHAT_ID:
-    print("⚠️ ORGANIZER_CHAT_ID not found. Organizer features will be disabled.")
+    raise ValueError(
+        "ORGANIZER_CHAT_ID not found in environment variables. Please set it."
+    )
 
 PAYMENT_INFORMATION = os.getenv("PAYMENT_INFORMATION")
 if not PAYMENT_INFORMATION:
-    print("⚠️ PAYMENT_INFORMATION not found. Using default payment info.")
-    PAYMENT_INFORMATION = "+7(999)888-77-66 (Т-Банк)"
+    raise ValueError(
+        "PAYMENT_INFORMATION not found in environment variables. Please set it."
+    )
 
 DATA_FILE = "/app/data/players.json"
 GAME_DAY = "воскресенье"
@@ -99,18 +96,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
     # Обработка ответа от организатора
-    if ORGANIZER_CHAT_ID and str(user.id) == ORGANIZER_CHAT_ID and waiting_organizer_response:
+    if str(user.id) == ORGANIZER_CHAT_ID and waiting_organizer_response:
         if text.lower() in ["да", "yes"]:
             # Отправляем сообщение об оплате в чат волейбола
-            if VOLLEYBALL_CHAT_ID:
-                await context.bot.send_message(
-                    chat_id=VOLLEYBALL_CHAT_ID,
-                    text=f"Всем спасибо за игру! Не забудьте перевести деньги {PAYMENT_INFORMATION}."
-                )
-                await update.message.reply_text("✅ Сообщение об оплате отправлено в чат!")
-            else:
-                await update.message.reply_text("❌ VOLLEYBALL_CHAT_ID не настроен, сообщение не отправлено.")
+            await context.bot.send_message(
+                chat_id=VOLLEYBALL_CHAT_ID,
+                text=f"Всем спасибо за игру! Не забудьте перевести деньги на номер {PAYMENT_INFORMATION}."
+            )
             waiting_organizer_response = False
+            await update.message.reply_text("✅ Сообщение об оплате отправлено в чат!")
         elif text.lower() in ["нет", "no"]:
             waiting_organizer_response = False
             await update.message.reply_text("✅ Хорошо, игра не состоялась.")
@@ -152,15 +146,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             players[:] = [p for p in players if p['user_id'] != user.id]
             save_players()
             await update.message.reply_text("Вы отписались от волейбола.")
-            if VOLLEYBALL_CHAT_ID:
-                await context.bot.send_message(
-                    chat_id=VOLLEYBALL_CHAT_ID,
-                    text=(
-                        f"⚠️ {user.first_name} "
-                        f"{user.last_name or ''} освободил место на "
-                        "волейбол."
-                    )
+            await context.bot.send_message(
+                chat_id=VOLLEYBALL_CHAT_ID,
+                text=(
+                    f"⚠️ {user.first_name} "
+                    f"{user.last_name or ''} освободил место на "
+                    "волейбол."
                 )
+            )
         else:
             await update.message.reply_text("Вы не были записаны.")
 
@@ -204,14 +197,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"Вы записались на волейбол в {GAME_DAY}! ✅",
                     reply_markup=main_keyboard
                 )
-                if VOLLEYBALL_CHAT_ID:
-                    await context.bot.send_message(
-                        chat_id=VOLLEYBALL_CHAT_ID,
-                        text=(
-                            f"📥 {user.first_name} "
-                            f"{user.last_name or ''} записался на волейбол."
-                        )
+                await context.bot.send_message(
+                    chat_id=VOLLEYBALL_CHAT_ID,
+                    text=(
+                        f"📥 {user.first_name} "
+                        f"{user.last_name or ''} записался на волейбол."
                     )
+                )
         else:
             await update.message.reply_text(
                 "Сначала выберите '📥 Записаться' с клавиатуры.",
@@ -247,33 +239,27 @@ async def reminder_job(app):
 
         # Воскресенье 17:00 - вопрос организатору
         if now.weekday() == 6 and now.hour == 17 and now.minute == 0:
-            if ORGANIZER_CHAT_ID:
-                waiting_organizer_response = True
-                keyboard = ReplyKeyboardMarkup(
-                    keyboard=[[KeyboardButton("Да"), KeyboardButton("Нет")]],
-                    resize_keyboard=True
-                )
-                await app.bot.send_message(
-                    chat_id=ORGANIZER_CHAT_ID,
-                    text="Была ли игра сегодня?",
-                    reply_markup=keyboard
-                )
-                print("❓ Задан вопрос организатору о проведении игры")
-            else:
-                print("⚠️ ORGANIZER_CHAT_ID не настроен, вопрос организатору не отправлен")
+            waiting_organizer_response = True
+            keyboard = ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton("Да"), KeyboardButton("Нет")]],
+                resize_keyboard=True
+            )
+            await app.bot.send_message(
+                chat_id=ORGANIZER_CHAT_ID,
+                text="Была ли игра сегодня?",
+                reply_markup=keyboard
+            )
+            print("❓ Задан вопрос организатору о проведении игры")
             await asyncio.sleep(60)
 
         # Понедельник 12:00 - открытие записи
         if now.weekday() == 0 and now.hour == 12 and now.minute == 0:
             REGISTRATION_OPEN = True
-            if VOLLEYBALL_CHAT_ID:
-                await app.bot.send_message(
-                    chat_id=VOLLEYBALL_CHAT_ID,
-                    text="Запись на следующее воскресенье открыта, можно записываться!"
-                )
-                print("📝 Отправлено сообщение об открытии записи")
-            else:
-                print("⚠️ VOLLEYBALL_CHAT_ID не настроен, сообщение об открытии записи не отправлено")
+            await app.bot.send_message(
+                chat_id=VOLLEYBALL_CHAT_ID,
+                text="Запись на следующее воскресенье открыта, можно записываться!"
+            )
+            print("📝 Отправлено сообщение об открытии записи")
             await asyncio.sleep(60)
 
         # Суббота 11:00 - закрытие записи и напоминание об оплате
