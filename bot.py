@@ -34,7 +34,8 @@ if not ORGANIZER_CHAT_ID:
 PAYMENT_INFORMATION = os.getenv("PAYMENT_INFORMATION")
 if not PAYMENT_INFORMATION:
     raise ValueError(
-        "PAYMENT_INFORMATION not found in environment variables. Please set it."
+        "PAYMENT_INFORMATION not found in environment variables. "
+        "Please set it."
     )
 
 DATA_FILE = "/app/data/players.json"
@@ -99,17 +100,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if str(user.id) == ORGANIZER_CHAT_ID and waiting_organizer_response:
         if text.lower() in ["да", "yes"]:
             # Отправляем сообщение об оплате в чат волейбола
+            payment_text = (
+                f"Всем спасибо за игру! Не забудьте перевести деньги "
+                f"на номер {PAYMENT_INFORMATION}."
+            )
             await context.bot.send_message(
                 chat_id=VOLLEYBALL_CHAT_ID,
-                text=f"Всем спасибо за игру! Не забудьте перевести деньги на номер {PAYMENT_INFORMATION}."
+                text=payment_text
             )
             waiting_organizer_response = False
-            await update.message.reply_text("✅ Сообщение об оплате отправлено в чат!")
+            await update.message.reply_text(
+                "✅ Сообщение об оплате отправлено в чат!"
+            )
         elif text.lower() in ["нет", "no"]:
             waiting_organizer_response = False
             await update.message.reply_text("✅ Хорошо, игра не состоялась.")
         else:
-            await update.message.reply_text("Пожалуйста, ответьте 'Да' или 'Нет'")
+            await update.message.reply_text(
+                "Пожалуйста, ответьте 'Да' или 'Нет'"
+            )
         return
 
     # Теперь достаточно только имени
@@ -255,9 +264,12 @@ async def reminder_job(app):
         # Понедельник 12:00 - открытие записи
         if now.weekday() == 0 and now.hour == 12 and now.minute == 0:
             REGISTRATION_OPEN = True
+            registration_text = (
+                "Запись на следующее воскресенье открыта, можно записываться!"
+            )
             await app.bot.send_message(
                 chat_id=VOLLEYBALL_CHAT_ID,
-                text="Запись на следующее воскресенье открыта, можно записываться!"
+                text=registration_text
             )
             print("📝 Отправлено сообщение об открытии записи")
             await asyncio.sleep(60)
