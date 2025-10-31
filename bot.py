@@ -7,6 +7,14 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 )
 
+# Отладочная печать всех переменных окружения
+print("🔍 Проверка переменных окружения:")
+print(f"TELEGRAM_BOT_TOKEN: {'✅' if os.getenv('TELEGRAM_BOT_TOKEN') else '❌'}")
+print(f"ADMIN_CHAT_ID: {'✅' if os.getenv('ADMIN_CHAT_ID') else '❌'}")
+print(f"VOLLEYBALL_CHAT_ID: {'✅' if os.getenv('VOLLEYBALL_CHAT_ID') else '❌'}")
+print(f"ORGANIZER_CHAT_ID: {'✅' if os.getenv('ORGANIZER_CHAT_ID') else '❌'}")
+print(f"PAYMENT_PHONE: {'✅' if os.getenv('PAYMENT_PHONE') else '❌'}")
+
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError(
@@ -21,9 +29,12 @@ if not ADMIN_CHAT_ID:
 
 VOLLEYBALL_CHAT_ID = os.getenv("VOLLEYBALL_CHAT_ID")
 if not VOLLEYBALL_CHAT_ID:
+    print(f"❌ VOLLEYBALL_CHAT_ID: '{VOLLEYBALL_CHAT_ID}'")
     raise ValueError(
         "VOLLEYBALL_CHAT_ID not found in environment variables. Please set it."
     )
+else:
+    print(f"✅ VOLLEYBALL_CHAT_ID loaded: {VOLLEYBALL_CHAT_ID}")
 
 ORGANIZER_CHAT_ID = os.getenv("ORGANIZER_CHAT_ID")
 if not ORGANIZER_CHAT_ID:
