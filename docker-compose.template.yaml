@@ -8,6 +8,9 @@ services:
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       ADMIN_CHAT_ID: ${ADMIN_CHAT_ID}
+      ORGANIZER_CHAT_ID: ${ORGANIZER_CHAT_ID}
+      PAYMENT_INFORMATION: ${PAYMENT_INFORMATION}
+      VOLLEYBALL_CHAT_ID: ${VOLLEYBALL_CHAT_ID}
     volumes:
       - ./data:/app/data
     networks:
