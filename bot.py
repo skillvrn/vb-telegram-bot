@@ -19,6 +19,18 @@ if not ADMIN_CHAT_ID:
         "ADMIN_CHAT_ID not found in environment variables. Please set it."
     )
 
+VOLLEYBALL_CHAT_ID = os.getenv("VOLLEYBALL_CHAT_ID")
+if not VOLLEYBALL_CHAT_ID:
+    raise ValueError(
+        "VOLLEYBALL_CHAT_ID not found in environment variables. Please set it."
+    )
+
+ORGANIZER_CHAT_ID = os.getenv("ORGANIZER_CHAT_ID")
+if not ORGANIZER_CHAT_ID:
+    raise ValueError(
+        "ORGANIZER_CHAT_ID not found in environment variables. Please set it."
+    )
+
 DATA_FILE = "/app/data/players.json"
 GAME_DAY = "воскресенье"
 REGISTRATION_OPEN = True
@@ -26,6 +38,9 @@ REGISTRATION_OPEN = True
 players: list[dict[str, str | int]] = []
 pending_confirmations = set()
 MAX_PLAYERS = 12
+
+# Переменная для отслеживания состояния ожидания ответа от организатора
+waiting_organizer_response = False
 
 
 # ---------------- 📁 Работа с файлом ----------------
@@ -69,8 +84,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global waiting_organizer_response
+    
     user = update.effective_user
     text = update.message.text
+
+    # Обработка ответа от организатора
+    if str(user.id) == ORGANIZER_CHAT_ID and waiting_organizer_response:
+        if text.lower() in ["да", "yes"]:
+            # Отправляем сообщение об оплате в чат волейбола
+            await context.bot.send_message(
+                chat_id=VOLLEYBALL_CHAT_ID,
+                text="Всем спасибо за игру! Не забудьте перевести деньги на номер +7(999)888-77-66 (Т-Банк)."
+            )
+            waiting_organizer_response = False
+            await update.message.reply_text("✅ Сообщение об оплате отправлено в чат!")
+        elif text.lower() in ["нет", "no"]:
+            waiting_organizer_response = False
+            await update.message.reply_text("✅ Хорошо, игра не состоялась.")
+        else:
+            await update.message.reply_text("Пожалуйста, ответьте 'Да' или 'Нет'")
+        return
 
     # Теперь достаточно только имени
     if not user.first_name:
@@ -106,23 +140,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             players[:] = [p for p in players if p['user_id'] != user.id]
             save_players()
             await update.message.reply_text("Вы отписались от волейбола.")
-            for chat in players:
-                try:
-                    await context.bot.send_message(
-                        chat_id=chat['user_id'],
-                        text=(
-                            f"⚠️ {user.first_name} "
-                            f"{user.last_name or ''} освободил место на "
-                            "волейбол."
-                        )
-                    )
-                except Exception:
-                    pass
             await context.bot.send_message(
-                chat_id=ADMIN_CHAT_ID,
+                chat_id=VOLLEYBALL_CHAT_ID,
                 text=(
-                    f"📤 {user.first_name} "
-                    f"{user.last_name or ''} отписался от волейбола."
+                    f"⚠️ {user.first_name} "
+                    f"{user.last_name or ''} освободил место на "
+                    "волейбол."
                 )
             )
         else:
@@ -169,7 +192,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=main_keyboard
                 )
                 await context.bot.send_message(
-                    chat_id=ADMIN_CHAT_ID,
+                    chat_id=VOLLEYBALL_CHAT_ID,
                     text=(
                         f"📥 {user.first_name} "
                         f"{user.last_name or ''} записался на волейбол."
@@ -203,11 +226,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------------- ⏰ Планировщик ----------------
 
 async def reminder_job(app):
-    global REGISTRATION_OPEN
+    global REGISTRATION_OPEN, waiting_organizer_response
 
     while True:
         now = datetime.datetime.now()
 
+        # Воскресенье 17:00 - вопрос организатору
+        if now.weekday() == 6 and now.hour == 17 and now.minute == 0:
+            waiting_organizer_response = True
+            keyboard = ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton("Да"), KeyboardButton("Нет")]],
+                resize_keyboard=True
+            )
+            await app.bot.send_message(
+                chat_id=ORGANIZER_CHAT_ID,
+                text="Была ли игра сегодня?",
+                reply_markup=keyboard
+            )
+            print("❓ Задан вопрос организатору о проведении игры")
+            await asyncio.sleep(60)
+
+        # Понедельник 12:00 - открытие записи
+        if now.weekday() == 0 and now.hour == 12 and now.minute == 0:
+            REGISTRATION_OPEN = True
+            await app.bot.send_message(
+                chat_id=VOLLEYBALL_CHAT_ID,
+                text="Запись на следующее воскресенье открыта, можно записываться!"
+            )
+            print("📝 Отправлено сообщение об открытии записи")
+            await asyncio.sleep(60)
+
+        # Суббота 11:00 - закрытие записи и напоминание об оплате
         if now.weekday() == 5 and now.hour == 11 and now.minute == 0:
             REGISTRATION_OPEN = False
             print("🔒 Закрыта запись. Отправляем напоминание.")
@@ -221,6 +270,7 @@ async def reminder_job(app):
                     pass
             await asyncio.sleep(60)
 
+        # Воскресенье 20:00 - очистка списка игроков
         if now.weekday() == 6 and now.hour == 20 and now.minute == 0:
             print("🧹 Очищаем список игроков.")
             for player in players:
