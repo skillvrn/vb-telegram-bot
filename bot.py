@@ -31,6 +31,12 @@ if not ORGANIZER_CHAT_ID:
         "ORGANIZER_CHAT_ID not found in environment variables. Please set it."
     )
 
+PAYMENT_INFORMATION = os.getenv("PAYMENT_INFORMATION")
+if not PAYMENT_INFORMATION:
+    raise ValueError(
+        "PAYMENT_INFORMATION not found in environment variables. Please set it."
+    )
+
 DATA_FILE = "/app/data/players.json"
 GAME_DAY = "воскресенье"
 REGISTRATION_OPEN = True
@@ -95,7 +101,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Отправляем сообщение об оплате в чат волейбола
             await context.bot.send_message(
                 chat_id=VOLLEYBALL_CHAT_ID,
-                text="Всем спасибо за игру! Не забудьте перевести деньги на номер +7(999)888-77-66 (Т-Банк)."
+                text=f"Всем спасибо за игру! Не забудьте перевести деньги на номер {PAYMENT_INFORMATION}."
             )
             waiting_organizer_response = False
             await update.message.reply_text("✅ Сообщение об оплате отправлено в чат!")
