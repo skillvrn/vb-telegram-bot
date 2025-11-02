@@ -42,11 +42,12 @@ DATA_FILE = "/app/data/players.json"
 STATE_FILE = "/app/data/bot_state.json"
 GAME_DAY = "воскресенье"
 
+# Инициализация глобальных переменных
 players: list[dict[str, str | int]] = []
 pending_confirmations = set()
 MAX_PLAYERS = 12
-
 waiting_organizer_response = False
+REGISTRATION_OPEN = True
 
 
 def load_players():
@@ -277,7 +278,7 @@ async def reminder_job(app):
         now = datetime.datetime.now()
         print(f"⏰ Проверка времени: {now}")
 
-        # Воскресенье 17:00 - вопрос организатору
+        # Воскресенье 20:00 (UTC+3) - вопрос организатору
         if now.weekday() == 6 and now.hour == 17 and now.minute == 0:
             waiting_organizer_response = True
             keyboard = ReplyKeyboardMarkup(
@@ -292,7 +293,7 @@ async def reminder_job(app):
             print("❓ Задан вопрос организатору о проведении игры")
             await asyncio.sleep(60)
 
-        # Понедельник 12:00 - открытие записи
+        # Понедельник 12:00 (UTC+3) - открытие записи
         if now.weekday() == 0 and now.hour == 9 and now.minute == 0:
             if not REGISTRATION_OPEN:
                 REGISTRATION_OPEN = True
@@ -308,7 +309,7 @@ async def reminder_job(app):
                 print("📝 Отправлено сообщение об открытии записи")
             await asyncio.sleep(60)
 
-        # Суббота 11:00 - закрытие записи (БЕЗ напоминания об оплате)
+        # Суббота 11:00 (UTC+3) - закрытие записи (БЕЗ напоминания об оплате)
         if now.weekday() == 5 and now.hour == 8 and now.minute == 0:
             if REGISTRATION_OPEN:
                 REGISTRATION_OPEN = False
@@ -325,7 +326,7 @@ async def reminder_job(app):
                 print("📢 Отправлено уведомление о закрытии записи в чат")
             await asyncio.sleep(60)
 
-        # Воскресенье 23:00 - очистка списка игроков
+        # Воскресенье 23:00 (UTC+3) - очистка списка игроков
         if now.weekday() == 6 and now.hour == 20 and now.minute == 0:
             print("🧹 Очищаем список игроков.")
             for player in players:
