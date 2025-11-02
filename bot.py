@@ -39,8 +39,9 @@ if not PAYMENT_INFORMATION:
     )
 
 DATA_FILE = "/app/data/players.json"
+STATE_FILE = "/app/data/bot_state.json"
 GAME_DAY = "воскресенье"
-REGISTRATION_OPEN = True
+
 # Список игроков, каждый — словарь с user_id, first_name, last_name, username
 players: list[dict[str, str | int]] = []
 pending_confirmations = set()
@@ -49,8 +50,7 @@ MAX_PLAYERS = 12
 # Переменная для отслеживания состояния ожидания ответа от организатора
 waiting_organizer_response = False
 
-
-# ---------------- 📁 Работа с файлом ----------------
+# ---------------- 📁 Работа с файлами ----------------
 
 def load_players():
     try:
@@ -61,11 +61,40 @@ def load_players():
     except FileNotFoundError:
         players.clear()
 
-
 def save_players():
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(players, f, ensure_ascii=False)
 
+def load_bot_state():
+    """Загружает состояние бота (открыта/закрыта запись)"""
+    global REGISTRATION_OPEN
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            state = json.load(f)
+            REGISTRATION_OPEN = state.get('registration_open', True)
+            print(f"✅ Состояние бота загружено. Запись: {'открыта' if REGISTRATION_OPEN else 'закрыта'}")
+    except FileNotFoundError:
+        REGISTRATION_OPEN = True
+        print("✅ Файл состояния не найден, установлено значение по умолчанию: запись открыта")
+    except Exception as e:
+        REGISTRATION_OPEN = True
+        print(f"⚠️ Ошибка загрузки состояния: {e}, установлено значение по умолчанию")
+
+def save_bot_state():
+    """Сохраняет состояние бота"""
+    try:
+        state = {
+            'registration_open': REGISTRATION_OPEN,
+            'last_updated': datetime.datetime.now().isoformat()
+        }
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+        print(f"💾 Состояние бота сохранено. Запись: {'открыта' if REGISTRATION_OPEN else 'закрыта'}")
+    except Exception as e:
+        print(f"❌ Ошибка сохранения состояния: {e}")
+
+# Загружаем состояние при старте
+load_bot_state()
 
 # ---------------- 🤖 Команды бота ----------------
 
@@ -77,10 +106,8 @@ main_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-
 def is_registered(user_id):
     return any(p['user_id'] == user_id for p in players)
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -89,9 +116,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_keyboard
     )
 
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global waiting_organizer_response
+    global waiting_organizer_response, REGISTRATION_OPEN
 
     user = update.effective_user
     text = update.message.text
@@ -175,11 +201,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     for i, p in enumerate(players)
                 ]
             )
+            status_info = f"Запись: {'✅ ОТКРЫТА' if REGISTRATION_OPEN else '❌ ЗАКРЫТА'}\n"
             await update.message.reply_text(
-                f"📋 Список игроков:\n{player_list}"
+                f"{status_info}📋 Список игроков ({len(players)}/{MAX_PLAYERS}):\n{player_list}"
             )
         else:
-            await update.message.reply_text("Список пуст.")
+            status_info = f"Запись: {'✅ ОТКРЫТА' if REGISTRATION_OPEN else '❌ ЗАКРЫТА'}\n"
+            await update.message.reply_text(f"{status_info}Список пуст.")
 
     elif text == "✅ Да":
         if user.id in pending_confirmations:
@@ -245,8 +273,9 @@ async def reminder_job(app):
 
     while True:
         now = datetime.datetime.now()
+        print(f"⏰ Проверка времени: {now}")
 
-        # Воскресенье 17:00 - вопрос организатору
+        # Воскресенье 20:00 - вопрос организатору
         if now.weekday() == 6 and now.hour == 17 and now.minute == 0:
             waiting_organizer_response = True
             keyboard = ReplyKeyboardMarkup(
@@ -262,30 +291,36 @@ async def reminder_job(app):
             await asyncio.sleep(60)
 
         # Понедельник 12:00 - открытие записи
-        if now.weekday() == 0 and now.hour == 12 and now.minute == 0:
-            REGISTRATION_OPEN = True
-            registration_text = (
-                "Запись на следующее воскресенье открыта, можно записываться!"
-            )
-            await app.bot.send_message(
-                chat_id=VOLLEYBALL_CHAT_ID,
-                text=registration_text
-            )
-            print("📝 Отправлено сообщение об открытии записи")
+        if now.weekday() == 0 and now.hour == 9 and now.minute == 0:
+            if not REGISTRATION_OPEN:  # Открываем только если была закрыта
+                REGISTRATION_OPEN = True
+                save_bot_state()  # Сохраняем состояние
+                registration_text = (
+                    "Запись на следующее воскресенье открыта, можно записываться!"
+                )
+                await app.bot.send_message(
+                    chat_id=VOLLEYBALL_CHAT_ID,
+                    text=registration_text
+                )
+                print("📝 Отправлено сообщение об открытии записи")
             await asyncio.sleep(60)
 
-        # Суббота 11:00 - закрытие записи и напоминание об оплате
-        if now.weekday() == 5 and now.hour == 11 and now.minute == 0:
-            REGISTRATION_OPEN = False
-            print("🔒 Закрыта запись. Отправляем напоминание.")
-            for player in players:
-                try:
-                    await app.bot.send_message(
-                        chat_id=player['user_id'],
-                        text="💸 Напоминание: не забудьте оплатить волейбол!"
-                    )
-                except Exception:
-                    pass
+        # Суббота 11:00 - закрытие записи
+        if now.weekday() == 5 and now.hour == 8 and now.minute == 0:
+            if REGISTRATION_OPEN:  # Закрываем только если была открыта
+                REGISTRATION_OPEN = False
+                save_bot_state()  # Сохраняем состояние
+                print("🔒 Закрыта запись.")
+                # Только уведомление в волейбольный чат о закрытии записи
+                close_text = (
+                    f"Запись на завтрашний волейбол закрыта.\n"
+                    f"Записалось игроков: {len(players)}/{MAX_PLAYERS}"
+                )
+                await app.bot.send_message(
+                    chat_id=VOLLEYBALL_CHAT_ID,
+                    text=close_text
+                )
+                print("📢 Отправлено уведомление о закрытии записи в чат")
             await asyncio.sleep(60)
 
         # Воскресенье 20:00 - очистка списка игроков
@@ -301,7 +336,7 @@ async def reminder_job(app):
                     pass
             players.clear()
             save_players()
-            REGISTRATION_OPEN = True
+            # Не меняем REGISTRATION_OPEN здесь, она откроется в понедельник
             await asyncio.sleep(60)
 
         await asyncio.sleep(30)
@@ -311,6 +346,7 @@ async def reminder_job(app):
 
 async def main():
     load_players()
+    load_bot_state()  # Загружаем состояние бота
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -320,6 +356,7 @@ async def main():
     app.create_task(reminder_job(app))
 
     print("🤖 Бот запущен!")
+    print(f"📝 Текущее состояние записи: {'ОТКРЫТА' if REGISTRATION_OPEN else 'ЗАКРЫТА'}")
     await app.run_polling()
 
 
