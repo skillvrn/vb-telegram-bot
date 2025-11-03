@@ -57,6 +57,10 @@ def load_players():
             players[:] = data
             print("✅ Игроки загружены из файла.")
     except FileNotFoundError:
+        print("📭 Файл игроков не найден, создаем пустой список")
+        players.clear()
+    except Exception as e:
+        print(f"❌ Ошибка загрузки игроков: {e}")
         players.clear()
 
 
@@ -66,6 +70,7 @@ def save_players():
         os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(players, f, ensure_ascii=False)
+        print(f"💾 Игроки сохранены. Всего: {len(players)}")
     except Exception as e:
         print(f"❌ Ошибка сохранения игроков: {e}")
 
@@ -81,27 +86,43 @@ def load_bot_state():
             print(f"✅ Состояние бота загружено. Запись: {status}")
     except FileNotFoundError:
         REGISTRATION_OPEN = True
-        print("✅ Файл состояния не найден, установлено значение по умолчанию")
+        print("📭 Файл состояния не найден, устанавливаем по умолчанию")
+        # Сохраняем состояние по умолчанию
+        save_bot_state()
     except Exception as e:
         REGISTRATION_OPEN = True
-        print(f"⚠️ Ошибка загрузки состояния: {e}, установлено по умолчанию")
+        print(f"❌ Ошибка загрузки состояния: {e}, устанавливаем по умолчанию")
+        save_bot_state()
 
 
 def save_bot_state():
     """Сохраняет состояние бота"""
     try:
         # Создаем директорию, если не существует
-        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        directory = os.path.dirname(STATE_FILE)
+        os.makedirs(directory, exist_ok=True)
+        
         state = {
             'registration_open': REGISTRATION_OPEN,
             'last_updated': datetime.datetime.now().isoformat()
         }
+        
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
+        
         status = 'открыта' if REGISTRATION_OPEN else 'закрыта'
         print(f"💾 Состояние бота сохранено. Запись: {status}")
+        
+        # Проверяем, что файл действительно создался
+        if os.path.exists(STATE_FILE):
+            file_size = os.path.getsize(STATE_FILE)
+            print(f"✅ Файл состояния создан успешно. Размер: {file_size} байт")
+        else:
+            print("❌ Файл состояния не создан!")
+            
     except Exception as e:
         print(f"❌ Ошибка сохранения состояния: {e}")
+        print(f"❌ Тип ошибки: {type(e).__name__}")
 
 
 main_keyboard = ReplyKeyboardMarkup(
@@ -341,6 +362,36 @@ async def reminder_job(app):
 
 
 async def main():
+    # Принудительно тестируем сохранение состояния при запуске
+    print("🧪 Тестируем сохранение состояния...")
+    save_bot_state()
+
+    # Проверяем, создался ли файл
+    if os.path.exists(STATE_FILE):
+        print(f"✅ Файл состояния создан: {STATE_FILE}")
+        # Показываем содержимое
+        try:
+            with open(STATE_FILE, "r") as f:
+                content = f.read()
+                print(f"📄 Содержимое файла: {content}")
+        except Exception as e:
+            print(f"❌ Не удалось прочитать файл: {e}")
+    else:
+        print(f"❌ Файл состояния НЕ создан: {STATE_FILE}")
+        # Проверяем директорию
+        data_dir = os.path.dirname(STATE_FILE)
+        print(f"📁 Проверяем директорию: {data_dir}")
+        if os.path.exists(data_dir):
+            print(f"✅ Директория существует")
+            # Показываем содержимое директории
+            try:
+                files = os.listdir(data_dir)
+                print(f"📂 Файлы в директории: {files}")
+            except Exception as e:
+                print(f"❌ Не удалось列出目录内容: {e}")
+        else:
+            print(f"❌ Директория не существует")
+
     load_players()
     load_bot_state()
 
