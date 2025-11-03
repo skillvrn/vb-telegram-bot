@@ -51,7 +51,7 @@ jobs:
 
   build_deploy:
     name: Build, push and deploy
-    needs: detect-secrets
+    needs: [detect-secrets, lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
