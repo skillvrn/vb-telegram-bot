@@ -2,10 +2,18 @@ import os
 import json
 import datetime
 import asyncio
+import logging
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 )
+
+# Настройка логирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not BOT_TOKEN:
@@ -55,12 +63,12 @@ def load_players():
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             players[:] = data
-            print("✅ Игроки загружены из файла.")
+            logger.info("✅ Игроки загружены из файла.")
     except FileNotFoundError:
-        print("📭 Файл игроков не найден, создаем пустой список")
+        logger.info("📭 Файл игроков не найден, создаем пустой список")
         players.clear()
     except Exception as e:
-        print(f"❌ Ошибка загрузки игроков: {e}")
+        logger.error(f"❌ Ошибка загрузки игроков: {e}")
         players.clear()
 
 
@@ -70,9 +78,9 @@ def save_players():
         os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(players, f, ensure_ascii=False)
-        print(f"💾 Игроки сохранены. Всего: {len(players)}")
+        logger.info(f"💾 Игроки сохранены. Всего: {len(players)}")
     except Exception as e:
-        print(f"❌ Ошибка сохранения игроков: {e}")
+        logger.error(f"❌ Ошибка сохранения игроков: {e}")
 
 
 def load_bot_state():
@@ -83,15 +91,15 @@ def load_bot_state():
             state = json.load(f)
             REGISTRATION_OPEN = state.get('registration_open', True)
             status = 'открыта' if REGISTRATION_OPEN else 'закрыта'
-            print(f"✅ Состояние бота загружено. Запись: {status}")
+            logger.info(f"✅ Состояние бота загружено. Запись: {status}")
     except FileNotFoundError:
         REGISTRATION_OPEN = True
-        print("📭 Файл состояния не найден, устанавливаем по умолчанию")
+        logger.info("📭 Файл состояния не найден, устанавливаем по умолчанию")
         # Сохраняем состояние по умолчанию
         save_bot_state()
     except Exception as e:
         REGISTRATION_OPEN = True
-        print(f"❌ Ошибка загрузки состояния: {e}, устанавливаем по умолчанию")
+        logger.error(f"❌ Ошибка загрузки состояния: {e}, устанавливаем по умолчанию")
         save_bot_state()
 
 
@@ -111,18 +119,18 @@ def save_bot_state():
             json.dump(state, f, ensure_ascii=False, indent=2)
         
         status = 'открыта' if REGISTRATION_OPEN else 'закрыта'
-        print(f"💾 Состояние бота сохранено. Запись: {status}")
+        logger.info(f"💾 Состояние бота сохранено. Запись: {status}")
         
         # Проверяем, что файл действительно создался
         if os.path.exists(STATE_FILE):
             file_size = os.path.getsize(STATE_FILE)
-            print(f"✅ Файл состояния создан успешно. Размер: {file_size} байт")
+            logger.info(f"✅ Файл состояния создан успешно. Размер: {file_size} байт")
         else:
-            print("❌ Файл состояния не создан!")
+            logger.error("❌ Файл состояния не создан!")
             
     except Exception as e:
-        print(f"❌ Ошибка сохранения состояния: {e}")
-        print(f"❌ Тип ошибки: {type(e).__name__}")
+        logger.error(f"❌ Ошибка сохранения состояния: {e}")
+        logger.error(f"❌ Тип ошибки: {type(e).__name__}")
 
 
 main_keyboard = ReplyKeyboardMarkup(
@@ -302,7 +310,7 @@ async def reminder_job(app):
 
     while True:
         now = datetime.datetime.now()
-        print(f"⏰ Проверка времени: {now}")
+        logger.info(f"⏰ Проверка времени: {now}")
 
         # Воскресенье 17:00 UTC - вопрос организатору
         if now.weekday() == 6 and now.hour == 17 and now.minute == 0:
@@ -316,12 +324,12 @@ async def reminder_job(app):
                 text="Была ли игра сегодня?",
                 reply_markup=keyboard
             )
-            print("❓ Задан вопрос организатору о проведении игры")
+            logger.info("❓ Задан вопрос организатору о проведении игры")
             await asyncio.sleep(60)
 
         # Воскресенье 20:00 UTC - очистка списка и открытие записи
         if now.weekday() == 6 and now.hour == 20 and now.minute == 0:
-            print("🧹 Очищаем список игроков и открываем запись.")
+            logger.info("🧹 Очищаем список игроков и открываем запись.")
             # Очищаем список
             players.clear()
             save_players()
@@ -338,7 +346,7 @@ async def reminder_job(app):
                 chat_id=VOLLEYBALL_CHAT_ID,
                 text=cleanup_text
             )
-            print("✅ Список очищен и запись открыта")
+            logger.info("✅ Список очищен и запись открыта")
             await asyncio.sleep(60)
 
         # Суббота 11:00 UTC - закрытие записи
@@ -346,7 +354,7 @@ async def reminder_job(app):
             if REGISTRATION_OPEN:
                 REGISTRATION_OPEN = False
                 save_bot_state()
-                print("🔒 Закрыта запись.")
+                logger.info("🔒 Закрыта запись.")
                 close_text = (
                     f"Запись на завтрашний волейбол закрыта.\n"
                     f"Записалось игроков: {len(players)}/{MAX_PLAYERS}"
@@ -355,7 +363,7 @@ async def reminder_job(app):
                     chat_id=VOLLEYBALL_CHAT_ID,
                     text=close_text
                 )
-                print("📢 Отправлено уведомление о закрытии записи в чат")
+                logger.info("📢 Отправлено уведомление о закрытии записи в чат")
             await asyncio.sleep(60)
 
         await asyncio.sleep(30)
@@ -363,34 +371,34 @@ async def reminder_job(app):
 
 async def main():
     # Принудительно тестируем сохранение состояния при запуске
-    print("🧪 Тестируем сохранение состояния...")
+    logger.info("🧪 Тестируем сохранение состояния...")
     save_bot_state()
 
     # Проверяем, создался ли файл
     if os.path.exists(STATE_FILE):
-        print(f"✅ Файл состояния создан: {STATE_FILE}")
+        logger.info(f"✅ Файл состояния создан: {STATE_FILE}")
         # Показываем содержимое
         try:
             with open(STATE_FILE, "r") as f:
                 content = f.read()
-                print(f"📄 Содержимое файла: {content}")
+                logger.info(f"📄 Содержимое файла: {content}")
         except Exception as e:
-            print(f"❌ Не удалось прочитать файл: {e}")
+            logger.error(f"❌ Не удалось прочитать файл: {e}")
     else:
-        print(f"❌ Файл состояния НЕ создан: {STATE_FILE}")
+        logger.error(f"❌ Файл состояния НЕ создан: {STATE_FILE}")
         # Проверяем директорию
         data_dir = os.path.dirname(STATE_FILE)
-        print(f"📁 Проверяем директорию: {data_dir}")
+        logger.info(f"📁 Проверяем директорию: {data_dir}")
         if os.path.exists(data_dir):
-            print(f"✅ Директория существует")
+            logger.info("✅ Директория существует")
             # Показываем содержимое директории
             try:
                 files = os.listdir(data_dir)
-                print(f"📂 Файлы в директории: {files}")
+                logger.info(f"📂 Файлы в директории: {files}")
             except Exception as e:
-                print(f"❌ Не удалось列出目录内容: {e}")
+                logger.error(f"❌ Не удалось перечислить файлы в директории: {e}")
         else:
-            print(f"❌ Директория не существует")
+            logger.error("❌ Директория не существует")
 
     load_players()
     load_bot_state()
@@ -402,9 +410,9 @@ async def main():
     )
     app.create_task(reminder_job(app))
 
-    print("🤖 Бот запущен!")
+    logger.info("🤖 Бот запущен!")
     status = 'ОТКРЫТА' if REGISTRATION_OPEN else 'ЗАКРЫТА'
-    print(f"📝 Текущее состояние записи: {status}")
+    logger.info(f"📝 Текущее состояние записи: {status}")
     await app.run_polling()
 
 

@@ -6,6 +6,7 @@ services:
     pull_policy: if_not_present
     restart: always
     environment:
+      PYTHONUNBUFFERED: 1
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       ADMIN_CHAT_ID: ${ADMIN_CHAT_ID}
       ORGANIZER_CHAT_ID: ${ORGANIZER_CHAT_ID}
