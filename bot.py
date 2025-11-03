@@ -61,8 +61,13 @@ def load_players():
 
 
 def save_players():
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(players, f, ensure_ascii=False)
+    try:
+        # Создаем директорию, если не существует
+        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(players, f, ensure_ascii=False)
+    except Exception as e:
+        print(f"❌ Ошибка сохранения игроков: {e}")
 
 
 def load_bot_state():
@@ -85,6 +90,8 @@ def load_bot_state():
 def save_bot_state():
     """Сохраняет состояние бота"""
     try:
+        # Создаем директорию, если не существует
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
         state = {
             'registration_open': REGISTRATION_OPEN,
             'last_updated': datetime.datetime.now().isoformat()
@@ -96,8 +103,6 @@ def save_bot_state():
     except Exception as e:
         print(f"❌ Ошибка сохранения состояния: {e}")
 
-
-load_bot_state()
 
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -278,7 +283,7 @@ async def reminder_job(app):
         now = datetime.datetime.now()
         print(f"⏰ Проверка времени: {now}")
 
-        # Воскресенье 20:00 (UTC+3) - вопрос организатору
+        # Воскресенье 17:00 UTC - вопрос организатору
         if now.weekday() == 6 and now.hour == 17 and now.minute == 0:
             waiting_organizer_response = True
             keyboard = ReplyKeyboardMarkup(
@@ -293,24 +298,30 @@ async def reminder_job(app):
             print("❓ Задан вопрос организатору о проведении игры")
             await asyncio.sleep(60)
 
-        # Понедельник 12:00 (UTC+3) - открытие записи
-        if now.weekday() == 0 and now.hour == 9 and now.minute == 0:
+        # Воскресенье 20:00 UTC - очистка списка и открытие записи
+        if now.weekday() == 6 and now.hour == 20 and now.minute == 0:
+            print("🧹 Очищаем список игроков и открываем запись.")
+            # Очищаем список
+            players.clear()
+            save_players()
+            # Открываем запись
             if not REGISTRATION_OPEN:
                 REGISTRATION_OPEN = True
                 save_bot_state()
-                registration_text = (
-                    "Запись на следующее воскресенье открыта, "
-                    "можно записываться!"
-                )
-                await app.bot.send_message(
-                    chat_id=VOLLEYBALL_CHAT_ID,
-                    text=registration_text
-                )
-                print("📝 Отправлено сообщение об открытии записи")
+            # Отправляем сообщение в чат
+            cleanup_text = (
+                "Волейбол завершён. Список игроков очищен. "
+                "Запись на следующее воскресенье открыта, можно записываться!"
+            )
+            await app.bot.send_message(
+                chat_id=VOLLEYBALL_CHAT_ID,
+                text=cleanup_text
+            )
+            print("✅ Список очищен и запись открыта")
             await asyncio.sleep(60)
 
-        # Суббота 11:00 (UTC+3) - закрытие записи (БЕЗ напоминания об оплате)
-        if now.weekday() == 5 and now.hour == 8 and now.minute == 0:
+        # Суббота 11:00 UTC - закрытие записи
+        if now.weekday() == 5 and now.hour == 11 and now.minute == 0:
             if REGISTRATION_OPEN:
                 REGISTRATION_OPEN = False
                 save_bot_state()
@@ -324,21 +335,6 @@ async def reminder_job(app):
                     text=close_text
                 )
                 print("📢 Отправлено уведомление о закрытии записи в чат")
-            await asyncio.sleep(60)
-
-        # Воскресенье 23:00 (UTC+3) - очистка списка игроков
-        if now.weekday() == 6 and now.hour == 20 and now.minute == 0:
-            print("🧹 Очищаем список игроков.")
-            for player in players:
-                try:
-                    await app.bot.send_message(
-                        chat_id=player['user_id'],
-                        text="✅ Волейбол завершён. Список игроков очищен."
-                    )
-                except Exception:
-                    pass
-            players.clear()
-            save_players()
             await asyncio.sleep(60)
 
         await asyncio.sleep(30)
