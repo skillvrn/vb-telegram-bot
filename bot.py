@@ -99,7 +99,11 @@ def load_bot_state():
         save_bot_state()
     except Exception as e:
         REGISTRATION_OPEN = True
-        logger.error(f"❌ Ошибка загрузки состояния: {e}, устанавливаем по умолчанию")
+        error_msg = (
+            f"❌ Ошибка загрузки состояния: {e}, "
+            f"устанавливаем по умолчанию"
+        )
+        logger.error(error_msg)
         save_bot_state()
 
 
@@ -109,25 +113,29 @@ def save_bot_state():
         # Создаем директорию, если не существует
         directory = os.path.dirname(STATE_FILE)
         os.makedirs(directory, exist_ok=True)
-        
+
         state = {
             'registration_open': REGISTRATION_OPEN,
             'last_updated': datetime.datetime.now().isoformat()
         }
-        
+
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
-        
+
         status = 'открыта' if REGISTRATION_OPEN else 'закрыта'
         logger.info(f"💾 Состояние бота сохранено. Запись: {status}")
-        
+
         # Проверяем, что файл действительно создался
         if os.path.exists(STATE_FILE):
             file_size = os.path.getsize(STATE_FILE)
-            logger.info(f"✅ Файл состояния создан успешно. Размер: {file_size} байт")
+            success_msg = (
+                f"✅ Файл состояния создан успешно. "
+                f"Размер: {file_size} байт"
+            )
+            logger.info(success_msg)
         else:
             logger.error("❌ Файл состояния не создан!")
-            
+
     except Exception as e:
         logger.error(f"❌ Ошибка сохранения состояния: {e}")
         logger.error(f"❌ Тип ошибки: {type(e).__name__}")
@@ -396,7 +404,10 @@ async def main():
                 files = os.listdir(data_dir)
                 logger.info(f"📂 Файлы в директории: {files}")
             except Exception as e:
-                logger.error(f"❌ Не удалось перечислить файлы в директории: {e}")
+                error_msg = (
+                    f"❌ Не удалось перечислить файлы в директории: {e}"
+                )
+                logger.error(error_msg)
         else:
             logger.error("❌ Директория не существует")
 
