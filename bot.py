@@ -208,7 +208,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 waiting_payment_amount = False
                 await update.message.reply_text(
-                    f"✅ Сообщение об оплате отправлено в чат!"
+                    f"✅ Сообщение об оплате {amount} рублей отправлено в чат!"
                 )
             else:
                 await update.message.reply_text(
