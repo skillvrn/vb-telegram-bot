@@ -3,6 +3,7 @@ import json
 import datetime
 import asyncio
 import logging
+import re
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
@@ -55,6 +56,7 @@ players: list[dict[str, str | int]] = []
 pending_confirmations = set()
 MAX_PLAYERS = 12
 waiting_organizer_response = False
+waiting_payment_amount = False
 REGISTRATION_OPEN = True
 
 
@@ -163,34 +165,56 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global waiting_organizer_response
+    global waiting_organizer_response, waiting_payment_amount
 
     user = update.effective_user
     text = update.message.text
 
     # Обработка ответа от организатора
-    if str(user.id) == ORGANIZER_CHAT_ID and waiting_organizer_response:
-        if text.lower() in ["да", "yes"]:
-            payment_text = (
-                f"Всем спасибо за игру! Не забудьте перевести деньги "
-                f"на номер {PAYMENT_INFORMATION}."
-            )
-            await context.bot.send_message(
-                chat_id=VOLLEYBALL_CHAT_ID,
-                text=payment_text
-            )
-            waiting_organizer_response = False
-            await update.message.reply_text(
-                "✅ Сообщение об оплате отправлено в чат!"
-            )
-        elif text.lower() in ["нет", "no"]:
-            waiting_organizer_response = False
-            await update.message.reply_text("✅ Хорошо, игра не состоялась.")
-        else:
-            await update.message.reply_text(
-                "Пожалуйста, ответьте 'Да' или 'Нет'"
-            )
-        return
+    if str(user.id) == ORGANIZER_CHAT_ID:
+        # Ждем ответ о том, была ли игра
+        if waiting_organizer_response:
+            if text.lower() in ["да", "yes"]:
+                waiting_organizer_response = False
+                waiting_payment_amount = True
+                await update.message.reply_text(
+                    "Сколько должен заплатить каждый игрок? "
+                    "(укажите сумму в рублях)"
+                )
+            elif text.lower() in ["нет", "no"]:
+                waiting_organizer_response = False
+                await update.message.reply_text(
+                    "✅ Хорошо, игра не состоялась."
+                )
+            else:
+                await update.message.reply_text(
+                    "Пожалуйста, ответьте 'Да' или 'Нет'"
+                )
+            return
+
+        # Ждем ответ о сумме оплаты
+        if waiting_payment_amount:
+            # Проверяем, что введено число
+            amount_match = re.search(r'\d+', text)
+            if amount_match:
+                amount = amount_match.group()
+                payment_text = (
+                    f"Всем спасибо за игру! Не забудьте перевести "
+                    f"{amount} рублей на номер {PAYMENT_INFORMATION}. "
+                )
+                await context.bot.send_message(
+                    chat_id=VOLLEYBALL_CHAT_ID,
+                    text=payment_text
+                )
+                waiting_payment_amount = False
+                await update.message.reply_text(
+                    f"✅ Сообщение об оплате отправлено в чат!"
+                )
+            else:
+                await update.message.reply_text(
+                    "Пожалуйста, укажите сумму цифрами (например: 500)"
+                )
+            return
 
     if not user.first_name:
         await update.message.reply_text(
@@ -320,8 +344,8 @@ async def reminder_job(app):
         now = datetime.datetime.now()
         logger.info(f"⏰ Проверка времени: {now}")
 
-        # Воскресенье 17:00 UTC - вопрос организатору
-        if now.weekday() == 6 and now.hour == 17 and now.minute == 0:
+        # Воскресенье 18:00 - вопрос организатору
+        if now.weekday() == 6 and now.hour == 15 and now.minute == 0:
             waiting_organizer_response = True
             keyboard = ReplyKeyboardMarkup(
                 keyboard=[[KeyboardButton("Да"), KeyboardButton("Нет")]],
@@ -335,8 +359,8 @@ async def reminder_job(app):
             logger.info("❓ Задан вопрос организатору о проведении игры")
             await asyncio.sleep(60)
 
-        # Воскресенье 20:00 UTC - очистка списка и открытие записи
-        if now.weekday() == 6 and now.hour == 20 and now.minute == 0:
+        # Воскресенье 22:00 - очистка списка и открытие записи
+        if now.weekday() == 6 and now.hour == 19 and now.minute == 0:
             logger.info("🧹 Очищаем список игроков и открываем запись.")
             # Очищаем список
             players.clear()
@@ -357,8 +381,8 @@ async def reminder_job(app):
             logger.info("✅ Список очищен и запись открыта")
             await asyncio.sleep(60)
 
-        # Суббота 11:00 UTC - закрытие записи
-        if now.weekday() == 5 and now.hour == 11 and now.minute == 0:
+        # Суббота 11:00 - закрытие записи
+        if now.weekday() == 5 and now.hour == 8 and now.minute == 0:
             if REGISTRATION_OPEN:
                 REGISTRATION_OPEN = False
                 save_bot_state()
