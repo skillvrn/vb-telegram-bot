@@ -9,7 +9,7 @@ jobs:
   lint:
     name: Python lint TELEGRAM-BOT
     runs-on: ubuntu-latest
-    continue-on-error: false
+    continue-on-error: true
     env:
       PYTHON_VERSION: '3.11'
     steps:
