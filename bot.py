@@ -145,8 +145,8 @@ def save_bot_state():
 
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton("📥 Записаться"), KeyboardButton("📤 Отписаться")],
-        [KeyboardButton("📋 Список игроков")]
+        [KeyboardButton("🏃‍♂️‍➡️ Записаться"), KeyboardButton("🙅 Отписаться")],
+        [KeyboardButton("🫂 Список игроков")]
     ],
     resize_keyboard=True
 )
@@ -199,8 +199,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if amount_match:
                 amount = amount_match.group()
                 payment_text = (
-                    f"Всем спасибо за игру! Не забудьте перевести "
-                    f"{amount} рублей на номер {PAYMENT_INFORMATION}. "
+                    f"🤜🤛 Всем спасибо за игру 🔥 Не забудьте перевести "
+                    f"{amount} рублей на номер {PAYMENT_INFORMATION} 💰. "
                 )
                 await context.bot.send_message(
                     chat_id=VOLLEYBALL_CHAT_ID,
@@ -223,7 +223,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    if text == "📥 Записаться":
+    if text == "🏃‍♂️‍➡️ Записаться":
         if not REGISTRATION_OPEN:
             await update.message.reply_text("⛔️ Запись уже закрыта.")
             return
@@ -244,7 +244,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=keyboard
             )
 
-    elif text == "📤 Отписаться":
+    elif text == "🙅 Отписаться":
         if is_registered(user.id):
             players[:] = [p for p in players if p['user_id'] != user.id]
             save_players()
@@ -260,7 +260,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("Вы не были записаны.")
 
-    elif text == "📋 Список игроков":
+    elif text == "🫂 Список игроков":
         if players:
             player_list = "\n".join(
                 [
@@ -273,7 +273,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status_info = f"Запись: {status_text}\n"
             player_count = f"({len(players)}/{MAX_PLAYERS})"
             await update.message.reply_text(
-                f"{status_info}📋 Список игроков {player_count}:\n{player_list}"
+                f"{status_info}🫂 Список игроков {player_count}:\n{player_list}"
             )
         else:
             status_text = "✅ ОТКРЫТА" if REGISTRATION_OPEN else "❌ ЗАКРЫТА"
@@ -308,7 +308,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=VOLLEYBALL_CHAT_ID,
                     text=(
-                        f"📥 Игрок {user.first_name} "
+                        f"🏃‍♂️‍➡️ Игрок {user.first_name} "
                         f"{user.last_name or ''} "
                         f"{'приварился' if user.id == 303452412 else 'записался'} "
                         "на волейбол."
@@ -316,7 +316,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
         else:
             await update.message.reply_text(
-                "Сначала выберите '📥 Записаться' с клавиатуры.",
+                "Сначала выберите '🏃‍♂️‍➡️ Записаться' с клавиатуры.",
                 reply_markup=main_keyboard
             )
 
@@ -374,7 +374,7 @@ async def reminder_job(app):
             # Отправляем сообщение в чат
             cleanup_text = (
                 "Волейбол завершён. Список игроков очищен. "
-                "Запись на следующее воскресенье открыта, можно записываться!"
+                "Запись на следующее воскресенье открыта, 🧦 можно записываться!"
             )
             await app.bot.send_message(
                 chat_id=VOLLEYBALL_CHAT_ID,
