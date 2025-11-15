@@ -252,9 +252,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(
                 chat_id=VOLLEYBALL_CHAT_ID,
                 text=(
-                    f"⚠️ {user.first_name} "
-                    f"{user.last_name or ''} освободил место на "
-                    "волейбол."
+                    f"⚠️ Игрок {user.first_name} "
+                    f"{user.last_name or ''} отписался с игры"
                 )
             )
         else:
