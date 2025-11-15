@@ -406,41 +406,14 @@ async def reminder_job(app):
 
 
 async def main():
-    # Принудительно тестируем сохранение состояния при запуске
-    logger.info("🧪 Тестируем сохранение состояния...")
-    save_bot_state()
-
-    # Проверяем, создался ли файл
-    if os.path.exists(STATE_FILE):
-        logger.info(f"✅ Файл состояния создан: {STATE_FILE}")
-        # Показываем содержимое
-        try:
-            with open(STATE_FILE, "r") as f:
-                content = f.read()
-                logger.info(f"📄 Содержимое файла: {content}")
-        except Exception as e:
-            logger.error(f"❌ Не удалось прочитать файл: {e}")
-    else:
-        logger.error(f"❌ Файл состояния НЕ создан: {STATE_FILE}")
-        # Проверяем директорию
-        data_dir = os.path.dirname(STATE_FILE)
-        logger.info(f"📁 Проверяем директорию: {data_dir}")
-        if os.path.exists(data_dir):
-            logger.info("✅ Директория существует")
-            # Показываем содержимое директории
-            try:
-                files = os.listdir(data_dir)
-                logger.info(f"📂 Файлы в директории: {files}")
-            except Exception as e:
-                error_msg = (
-                    f"❌ Не удалось перечислить файлы в директории: {e}"
-                )
-                logger.error(error_msg)
-        else:
-            logger.error("❌ Директория не существует")
-
+    # Сначала загружаем данные, потом проверяем состояние
     load_players()
     load_bot_state()
+
+    # Только для отладки - проверяем, что состояние загрузилось правильно
+    logger.info("🔍 Проверяем загруженное состояние...")
+    status = 'открыта' if REGISTRATION_OPEN else 'закрыта'
+    logger.info(f"📝 Текущее состояние записи: {status}")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -450,8 +423,6 @@ async def main():
     app.create_task(reminder_job(app))
 
     logger.info("🤖 Бот запущен!")
-    status = 'ОТКРЫТА' if REGISTRATION_OPEN else 'ЗАКРЫТА'
-    logger.info(f"📝 Текущее состояние записи: {status}")
     await app.run_polling()
 
 
