@@ -304,13 +304,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"Вы записались на волейбол в {GAME_DAY}! ✅",
                     reply_markup=main_keyboard
                 )
+                if user.id == 303452412:
+                    action = 'приварился'
+                else:
+                    action = 'записался'
                 await context.bot.send_message(
                     chat_id=VOLLEYBALL_CHAT_ID,
                     text=(
                         f"🏃‍♂️‍➡️ Игрок {user.first_name} "
                         f"{user.last_name or ''} "
-                        f"{'приварился' if user.id == 303452412 else 'записался'} "
-                        "на волейбол."
+                        f"{action} на волейбол."
                     )
                 )
         else:
@@ -373,7 +376,7 @@ async def reminder_job(app):
             # Отправляем сообщение в чат
             cleanup_text = (
                 "Волейбол завершён. Список игроков очищен. "
-                "Запись на следующее воскресенье открыта, 🧦 можно записываться!"
+                "Запись на следующее воскресенье открыта 🧦"
             )
             await app.bot.send_message(
                 chat_id=VOLLEYBALL_CHAT_ID,
