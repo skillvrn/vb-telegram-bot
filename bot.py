@@ -385,8 +385,8 @@ async def reminder_job(app):
             logger.info("✅ Список очищен и запись открыта")
             await asyncio.sleep(60)
 
-        # Суббота 11:00 - закрытие записи
-        if now.weekday() == 5 and now.hour == 8 and now.minute == 0:
+        # Пятница 11:00 - закрытие записи
+        if now.weekday() == 4 and now.hour == 8 and now.minute == 0:
             if REGISTRATION_OPEN:
                 REGISTRATION_OPEN = False
                 save_bot_state()
