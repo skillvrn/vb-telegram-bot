@@ -392,7 +392,7 @@ async def reminder_job(app):
                 save_bot_state()
                 logger.info("🔒 Закрыта запись.")
                 close_text = (
-                    f"🔒 Запись на завтрашний волейбол закрыта.\n"
+                    f"🔒 Запись закрыта.\n"
                     f"Записалось игроков: {len(players)}/{MAX_PLAYERS}"
                 )
                 await app.bot.send_message(
