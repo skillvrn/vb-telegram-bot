@@ -275,7 +275,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 status_text = "🚫 МЕСТа ЗАНЯТЫ"
             else:
                 status_text = "✅ ОТКРЫТА"
-            
+
             status_info = f"Запись: {status_text}\n"
             player_count = f"({len(players)}/{MAX_PLAYERS})"
             await update.message.reply_text(
