@@ -268,14 +268,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     for i, p in enumerate(players)
                 ]
             )
-            status_text = "✅ ОТКРЫТА" if REGISTRATION_OPEN else "🔒 ЗАКРЫТА"
+            # Определяем статус в зависимости от условий
+            if not REGISTRATION_OPEN:
+                status_text = "🔒 ЗАКРЫТА"
+            elif len(players) >= MAX_PLAYERS:
+                status_text = "🚫 МЕСТа ЗАНЯТЫ"
+            else:
+                status_text = "✅ ОТКРЫТА"
+            
             status_info = f"Запись: {status_text}\n"
             player_count = f"({len(players)}/{MAX_PLAYERS})"
             await update.message.reply_text(
                 f"{status_info}🫂 Список игроков {player_count}:\n{player_list}"
             )
         else:
-            status_text = "✅ ОТКРЫТА" if REGISTRATION_OPEN else "🔒 ЗАКРЫТА"
+            # Если список пуст, показываем только статус открыта/закрыта
+            if not REGISTRATION_OPEN:
+                status_text = "🔒 ЗАКРЫТА"
+            else:
+                status_text = "✅ ОТКРЫТА"
             status_info = f"Запись: {status_text}\n"
             await update.message.reply_text(f"{status_info}Список пуст.")
 
