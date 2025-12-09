@@ -315,7 +315,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=main_keyboard
                 )
                 if user.id == 303452412:
-                    action = 'приварился'
+                    action = 'приварился 👨‍🏭💥'
                 else:
                     action = 'записался'
                 await context.bot.send_message(
