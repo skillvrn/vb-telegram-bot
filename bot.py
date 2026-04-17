@@ -343,7 +343,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=keyboard
             )
 
-    elif text == "� Записать друга":
+    elif text == "👥 Записать друга":
         if not REGISTRATION_OPEN:
             await update.message.reply_text("⛔️ Запись уже закрыта.")
             return
