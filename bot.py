@@ -4,9 +4,13 @@ import datetime
 import asyncio
 import logging
 import re
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import (
+    Update, ReplyKeyboardMarkup, KeyboardButton,
+    InlineKeyboardMarkup, InlineKeyboardButton
+)
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+    ApplicationBuilder, CommandHandler, MessageHandler,
+    CallbackQueryHandler, ContextTypes, filters
 )
 
 # Настройка логирования
@@ -54,6 +58,7 @@ GAME_DAY = "воскресенье"
 # Инициализация глобальных переменных
 players: list[dict[str, str | int]] = []
 pending_confirmations = set()
+pending_add_friend = set()
 MAX_PLAYERS = 12
 waiting_organizer_response = False
 waiting_payment_amount = False
@@ -146,6 +151,7 @@ def save_bot_state():
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton("🏃‍♂️‍➡️ Записаться"), KeyboardButton("🙅 Отписаться")],
+        [KeyboardButton("👥 Записать друга"), KeyboardButton("🗑 Удалить друга")],
         [KeyboardButton("🫂 Список игроков")]
     ],
     resize_keyboard=True
@@ -161,6 +167,49 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Привет, {update.effective_user.first_name}! "
         "Добро пожаловать в волейбольный бот 🏐",
         reply_markup=main_keyboard
+    )
+
+
+async def handle_friend_deletion(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Обработка нажатия inline-кнопки удаления друга"""
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+    if not data.startswith("del_friend:"):
+        return
+
+    friend_id = data[len("del_friend:"):]
+    user = query.from_user
+
+    friend = next(
+        (p for p in players
+         if p.get('friend_id') == friend_id
+         and p.get('added_by') == user.id),
+        None
+    )
+
+    if not friend:
+        await query.edit_message_text(
+            "⚠️ Друг не найден или вы не можете его удалить."
+        )
+        return
+
+    friend_name = friend['first_name']
+    players[:] = [p for p in players if p.get('friend_id') != friend_id]
+    save_players()
+
+    await query.edit_message_text(
+        f"✅ Друг {friend_name} удалён из списка."
+    )
+    await context.bot.send_message(
+        chat_id=VOLLEYBALL_CHAT_ID,
+        text=(
+            f"⚠️ Игрок {user.first_name} {user.last_name or ''} "
+            f"удалил друга {friend_name} из списка."
+        )
     )
 
 
@@ -223,6 +272,53 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Обработка ввода имени друга
+    if user.id in pending_add_friend:
+        pending_add_friend.discard(user.id)
+        friend_name = text.strip()
+        if not friend_name:
+            await update.message.reply_text(
+                "⚠️ Имя не может быть пустым.",
+                reply_markup=main_keyboard
+            )
+            return
+        if not REGISTRATION_OPEN:
+            await update.message.reply_text(
+                "⛔️ Запись уже закрыта.",
+                reply_markup=main_keyboard
+            )
+            return
+        if len(players) >= MAX_PLAYERS:
+            await update.message.reply_text(
+                "⛔️ Все места заняты! Максимум 12 человек.",
+                reply_markup=main_keyboard
+            )
+            return
+        import uuid
+        friend_id = str(uuid.uuid4())
+        players.append({
+            'user_id': f"friend_{friend_id}",
+            'friend_id': friend_id,
+            'first_name': friend_name,
+            'last_name': '',
+            'username': '',
+            'is_friend': True,
+            'added_by': user.id
+        })
+        save_players()
+        await update.message.reply_text(
+            f"✅ Друг {friend_name} записан на волейбол в {GAME_DAY}!",
+            reply_markup=main_keyboard
+        )
+        await context.bot.send_message(
+            chat_id=VOLLEYBALL_CHAT_ID,
+            text=(
+                f"👥 Игрок {user.first_name} {user.last_name or ''} "
+                f"записал друга {friend_name} на волейбол."
+            )
+        )
+        return
+
     if text == "🏃‍♂️‍➡️ Записаться":
         if not REGISTRATION_OPEN:
             await update.message.reply_text("⛔️ Запись уже закрыта.")
@@ -244,7 +340,44 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=keyboard
             )
 
-    elif text == "🙅 Отписаться":
+    elif text == "� Записать друга":
+        if not REGISTRATION_OPEN:
+            await update.message.reply_text("⛔️ Запись уже закрыта.")
+            return
+        if len(players) >= MAX_PLAYERS:
+            await update.message.reply_text(
+                "⛔️ Все места заняты! Максимум 12 человек."
+            )
+            return
+        pending_add_friend.add(user.id)
+        await update.message.reply_text(
+            "Введите имя друга, которого хотите записать:"
+        )
+
+    elif text == "🗑 Удалить друга":
+        my_friends = [
+            p for p in players
+            if p.get('is_friend') and p.get('added_by') == user.id
+        ]
+        if not my_friends:
+            await update.message.reply_text(
+                "У вас нет записанных друзей.",
+                reply_markup=main_keyboard
+            )
+            return
+        buttons = [
+            [InlineKeyboardButton(
+                f"❌ {p['first_name']}",
+                callback_data=f"del_friend:{p['friend_id']}"
+            )]
+            for p in my_friends
+        ]
+        await update.message.reply_text(
+            "Выберите друга, которого хотите удалить:",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+    elif text == "�🙅 Отписаться":
         if is_registered(user.id):
             players[:] = [p for p in players if p['user_id'] != user.id]
             save_players()
@@ -430,6 +563,7 @@ async def main():
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
     )
+    app.add_handler(CallbackQueryHandler(handle_friend_deletion))
     app.create_task(reminder_job(app))
 
     logger.info("🤖 Бот запущен!")
