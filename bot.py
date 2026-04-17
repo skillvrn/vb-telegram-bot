@@ -151,7 +151,10 @@ def save_bot_state():
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton("🏃‍♂️‍➡️ Записаться"), KeyboardButton("🙅 Отписаться")],
-        [KeyboardButton("👥 Записать друга"), KeyboardButton("🗑 Удалить друга")],
+        [
+            KeyboardButton("👥 Записать друга"),
+            KeyboardButton("🗑 Удалить друга")
+        ],
         [KeyboardButton("🫂 Список игроков")]
     ],
     resize_keyboard=True
