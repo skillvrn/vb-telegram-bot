@@ -488,7 +488,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def reminder_job(app):
-    global REGISTRATION_OPEN, waiting_organizer_response
+    global REGISTRATION_OPEN
 
     while True:
         now = datetime.datetime.now()
@@ -545,7 +545,9 @@ async def reminder_job(app):
         #             chat_id=VOLLEYBALL_CHAT_ID,
         #             text=close_text
         #         )
-        #         logger.info("📢 Отправлено уведомление о закрытии записи в чат")
+        #         logger.info(
+        #             "📢 Отправлено уведомление о закрытии записи в чат"
+        #         )
         #     await asyncio.sleep(60)
 
         await asyncio.sleep(30)
