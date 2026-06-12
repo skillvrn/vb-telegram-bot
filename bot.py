@@ -488,8 +488,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def reminder_job(app):
-    global REGISTRATION_OPEN
-
     while True:
         now = datetime.datetime.now()
         logger.info(f"⏰ Проверка времени: {now}")
@@ -509,27 +507,24 @@ async def reminder_job(app):
         #     logger.info("❓ Задан вопрос организатору о проведении игры")
         #     await asyncio.sleep(60)
 
-        # Воскресенье 22:00 - очистка списка и открытие записи
-        if now.weekday() == 6 and now.hour == 19 and now.minute == 0:
-            logger.info("🧹 Очищаем список игроков и открываем запись.")
-            # Очищаем список
-            players.clear()
-            save_players()
-            # Открываем запись
-            if not REGISTRATION_OPEN:
-                REGISTRATION_OPEN = True
-                save_bot_state()
-            # Отправляем сообщение в чат
-            cleanup_text = (
-                "Волейбол завершён. Список игроков очищен. "
-                "Запись на следующее воскресенье открыта 🧦"
-            )
-            await app.bot.send_message(
-                chat_id=VOLLEYBALL_CHAT_ID,
-                text=cleanup_text
-            )
-            logger.info("✅ Список очищен и запись открыта")
-            await asyncio.sleep(60)
+        # Воскресенье 19:00 - очистка списка и открытие записи (отключено)
+        # if now.weekday() == 6 and now.hour == 19 and now.minute == 0:
+        #     logger.info("🧹 Очищаем список игроков и открываем запись.")
+        #     players.clear()
+        #     save_players()
+        #     if not REGISTRATION_OPEN:
+        #         REGISTRATION_OPEN = True
+        #         save_bot_state()
+        #     cleanup_text = (
+        #         "Волейбол завершён. Список игроков очищен. "
+        #         "Запись на следующее воскресенье открыта 🧦"
+        #     )
+        #     await app.bot.send_message(
+        #         chat_id=VOLLEYBALL_CHAT_ID,
+        #         text=cleanup_text
+        #     )
+        #     logger.info("✅ Список очищен и запись открыта")
+        #     await asyncio.sleep(60)
 
         # Пятница 11:00 - закрытие записи (отключено)
         # if now.weekday() == 4 and now.hour == 8 and now.minute == 0:
