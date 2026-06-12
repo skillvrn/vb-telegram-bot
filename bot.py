@@ -57,8 +57,8 @@ GAME_DAY = "воскресенье"
 
 # Инициализация глобальных переменных
 players: list[dict[str, str | int]] = []
-pending_confirmations = set()
-pending_add_friend = set()
+pending_confirmations: set[int] = set()
+pending_add_friend: set[int] = set()
 MAX_PLAYERS = 12
 waiting_organizer_response = False
 waiting_payment_amount = False
