@@ -494,20 +494,20 @@ async def reminder_job(app):
         now = datetime.datetime.now()
         logger.info(f"⏰ Проверка времени: {now}")
 
-        # Воскресенье 18:00 - вопрос организатору
-        if now.weekday() == 6 and now.hour == 15 and now.minute == 0:
-            waiting_organizer_response = True
-            keyboard = ReplyKeyboardMarkup(
-                keyboard=[[KeyboardButton("Да"), KeyboardButton("Нет")]],
-                resize_keyboard=True
-            )
-            await app.bot.send_message(
-                chat_id=ORGANIZER_CHAT_ID,
-                text="Была ли игра сегодня?",
-                reply_markup=keyboard
-            )
-            logger.info("❓ Задан вопрос организатору о проведении игры")
-            await asyncio.sleep(60)
+        # Воскресенье 18:00 - вопрос организатору (отключено)
+        # if now.weekday() == 6 and now.hour == 15 and now.minute == 0:
+        #     waiting_organizer_response = True
+        #     keyboard = ReplyKeyboardMarkup(
+        #         keyboard=[[KeyboardButton("Да"), KeyboardButton("Нет")]],
+        #         resize_keyboard=True
+        #     )
+        #     await app.bot.send_message(
+        #         chat_id=ORGANIZER_CHAT_ID,
+        #         text="Была ли игра сегодня?",
+        #         reply_markup=keyboard
+        #     )
+        #     logger.info("❓ Задан вопрос организатору о проведении игры")
+        #     await asyncio.sleep(60)
 
         # Воскресенье 22:00 - очистка списка и открытие записи
         if now.weekday() == 6 and now.hour == 19 and now.minute == 0:
@@ -531,22 +531,22 @@ async def reminder_job(app):
             logger.info("✅ Список очищен и запись открыта")
             await asyncio.sleep(60)
 
-        # Пятница 11:00 - закрытие записи
-        if now.weekday() == 4 and now.hour == 8 and now.minute == 0:
-            if REGISTRATION_OPEN:
-                REGISTRATION_OPEN = False
-                save_bot_state()
-                logger.info("🔒 Закрыта запись.")
-                close_text = (
-                    f"🔒 Запись закрыта.\n"
-                    f"Записалось игроков: {len(players)}/{MAX_PLAYERS}"
-                )
-                await app.bot.send_message(
-                    chat_id=VOLLEYBALL_CHAT_ID,
-                    text=close_text
-                )
-                logger.info("📢 Отправлено уведомление о закрытии записи в чат")
-            await asyncio.sleep(60)
+        # Пятница 11:00 - закрытие записи (отключено)
+        # if now.weekday() == 4 and now.hour == 8 and now.minute == 0:
+        #     if REGISTRATION_OPEN:
+        #         REGISTRATION_OPEN = False
+        #         save_bot_state()
+        #         logger.info("🔒 Закрыта запись.")
+        #         close_text = (
+        #             f"🔒 Запись закрыта.\n"
+        #             f"Записалось игроков: {len(players)}/{MAX_PLAYERS}"
+        #         )
+        #         await app.bot.send_message(
+        #             chat_id=VOLLEYBALL_CHAT_ID,
+        #             text=close_text
+        #         )
+        #         logger.info("📢 Отправлено уведомление о закрытии записи в чат")
+        #     await asyncio.sleep(60)
 
         await asyncio.sleep(30)
 
