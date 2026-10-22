@@ -380,7 +380,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(buttons)
         )
 
-    elif text == "�🙅 Отписаться":
+    elif text == "🙅 Отписаться":
         if is_registered(user.id):
             players[:] = [p for p in players if p['user_id'] != user.id]
             save_players()
